@@ -18,6 +18,7 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     bookings = relationship("Booking", back_populates="user")
+    booking_operations = relationship("BookingOperation", back_populates="user")
 
 
 class Event(Base):
@@ -61,3 +62,103 @@ class Booking(Base):
 
     seat = relationship("Seat", back_populates="booking")
     user = relationship("User", back_populates="bookings")
+
+class BookingOperation(Base):
+    __tablename__ = "booking_operations"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    operation_id = Column(
+        String(100),
+        unique=True,
+        index=True,
+        nullable=False
+                
+    
+    )
+
+    seat_id = Column(
+        Integer,
+        ForeignKey("seat.id"),
+        nullable=False
+    )
+
+    event_id = Column(
+        Integer,
+        ForeignKey("events.id"),
+        nullable=False
+    )
+
+    user_id = Column(
+        Integer,
+        ForeignKey("user.id"),
+        nullable=False
+    )
+
+    status = Column(
+        String(20),
+        
+        nullable=False
+        default-"pending"
+    )
+
+    booking_id = Column(
+        Integer,
+        ForeignKey("bookings.id"),
+        nullable=False
+    )
+
+    attempt_count = Column(
+        Integer,
+        
+        nullable=False,
+        default=0
+    )
+
+    next_attempt_at = Column(
+        DateTime,
+        
+        nullable=True
+    )
+
+    error_messge = Column(
+        String(500),
+        
+        nullable=True
+    )
+
+    created_at = Column(
+        DateTime,
+        
+        nullable=False,
+
+        default=datetime.datetime.utcnow
+    )
+
+    updated_at = Column(
+        DateTime,
+        
+        nullable=False,
+
+        default=datetime.datetime.utcnow,
+        onupdate=datetime.datetime.utcnow
+    )
+
+    user = relationship(
+        "User",
+        back_populates="booking_operations"
+    
+    )
+
+    seat=relationship("Seat")
+    event=relationship("Event")
+    booking=relationship("Booking")
+
+
+
+    
+
+
+
+
+

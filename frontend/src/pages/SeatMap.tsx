@@ -22,6 +22,8 @@ export default function SeatMap() {
   const [confirming, setConfirming] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
 
+  const [pending, setPending] = useState(false);
+
   const fetchSeatMap = useCallback(() => {
     api.get(`/events/${id}/seats`).then((res) => {
       setEvent(res.data.event);

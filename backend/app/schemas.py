@@ -1,6 +1,8 @@
 import datetime
 from decimal import Decimal
+from re import S
 from pydantic import BaseModel, EmailStr, ConfigDict
+from typing import Optional
 
 
 # ---------- Auth ----------
@@ -65,6 +67,8 @@ class LockResponse(BaseModel):
 # ---------- Bookings ----------
 class BookingCreate(BaseModel):
     seat_id: int
+    event_id:int
+    operation_id: str
 
 
 class BookingOut(BaseModel):
@@ -74,3 +78,14 @@ class BookingOut(BaseModel):
     event_id: int
     status: str
     booked_at: datetime.datetime
+
+class BookingOperationOut(BaseModel):
+    operation_id: str
+    status: str
+    booking_id: Optional[int] = None
+    attempt_count: int
+    error_message: Optional[str] = None
+
+   
+    class config: from_attributes=True
+

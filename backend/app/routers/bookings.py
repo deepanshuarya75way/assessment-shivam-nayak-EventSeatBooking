@@ -1,16 +1,85 @@
-from fastapi import APIRouter, Depends, HTTPException
+import asyncio
+import datetime
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app import models, schemas, auth
-from app.database import get_db
+from app.database import get_db, SessionLocal
 from app.redis_client import redis_client, seat_lock_key
 from app.websocket_manager import manager
+
 
 router = APIRouter(prefix="/bookings", tags=["bookings"])
 
 
-@router.post("", response_model=schemas.BookingOut, status_code=201)
+async def process_booking(operation_id: str):
+    db=SessionLocal()
+
+    try:
+        operation=(
+            db.query(models.BookingOperation).filter(
+                models.BookingOperation.operation_id == operation_id).first()
+
+        )
+            if not operation: 
+                    return
+            booking = models.Booking(
+                    seat_id=operation.seat_id,
+                    event_id=operation.event_id,
+                    user_id=operation.user_id,
+                )
+            db.add(booking)
+            db.commit()
+            db.refresh(booking)
+
+            operation.status="confirmed"
+            operation.booking_id=booking.id
+            db.commit()
+
+            key = seat_local_key(operation.seat_id)
+            redis_client.delete(key)
+
+                await manager.broadcast(
+                    operation.event_id,
+                    {
+                        "type: "seat_booked",
+                        "seat_id":operation.seat_id,
+                    },
+                )
+
+                except Exception as exc: 
+                    db.rollback()
+
+                    operation=(
+                        db.query(models.BookingOperation).filter(
+                            models.models.BookingOperation.operation_id == operation_id).first()
+                        )
+                           
+                        if operation:
+                            operation.status="failed"
+
+                            operation.error_message=str(exc)
+
+                            db.commit()
+
+    finally:
+          db.close()
+                    
+
+
+            
+        
+
+@router.post(
+     "",
+    responce_model=schemas.BookingOperationnOut, status_code=status.HTTP_202_ACCEPTED,
+
+
+)
+
+
+
 async def create_booking(
     payload: schemas.BookingCreate,
     db: Session = Depends(get_db),
@@ -29,14 +98,34 @@ async def create_booking(
                    "(your hold may have expired — try selecting the seat again).",
         )
 
+
+    operation = models.BookingOperation(
+        operations_id=payload.operation_id,
+        seat_id=seat.id,
+        event_id=seat.event_id,
+        users_id=current_user.id,
+        status="pending",
+        attempt_count=0,
+
+      next_attempt_st=datetime.datetime.utcnow(),
+    )
+
+    db.add(operation)
+    db.commit()
+    db.refresh(operation)
+
+    asyncio.create_task(
+        process_booking_operation(operation.operation_id)
+    )
+
+    return operation
+
     booking = models.Booking(seat_id=seat.id, event_id=seat.event_id, user_id=current_user.id)
     db.add(booking)
     try:
         db.commit()
     except IntegrityError:
-        # Defense-in-depth: even if two requests somehow both believed they
-        # held the lock, the DB-level unique constraint on seat_id guarantees
-        # only one booking can ever be committed for a given seat.
+        
         db.rollback()
         raise HTTPException(status_code=409, detail="Seat was just booked by someone else")
 

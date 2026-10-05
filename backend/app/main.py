@@ -1,6 +1,7 @@
 import asyncio
 import contextlib
 
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -9,8 +10,17 @@ from app.database import Base, engine
 from app.redis_client import redis_client
 from app.websocket_manager import manager
 from app.routers import auth, events, seats, bookings
+from app.router.bookings import booking_worker
 
 app = FastAPI(title="Seat Booking System", version="1.0.0")
+
+
+@app.on_event("startup")
+async def startup_event():
+    asyncio.create_task(booking_worker())
+
+
+
 
 app.add_middleware(
     CORSMiddleware,

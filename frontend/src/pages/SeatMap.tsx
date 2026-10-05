@@ -96,10 +96,34 @@ export default function SeatMap() {
     if (!mySeat) return;
     setConfirming(true);
     setError(null);
+
+    const operationId = crypto.randomUUID();
     try {
-      await api.post("/bookings", { seat_id: mySeat.id });
-      setConfirmed(true);
+      await api.post("/bookings", { seat_id: mySeat.id, operation_id: operationId, });
+
       setMySeat(null);
+
+      const checkStatus = async() => {
+        try{
+          const res = await api.get(
+            `/bookings/operations/${operationId}`
+          );
+
+          if(res.data.status === "confirmed"){
+            setPending(false);
+            setConfirmed(true);
+          }
+
+          if(res.data.status === "falied"){
+            setPending(false);
+            setError(
+              res.data.error_messge || "Booking filed. "
+            );
+          }
+        }
+      }
+
+
     } catch (err: any) {
       setError(err?.response?.data?.detail || "Booking failed — the seat may have been taken.");
       fetchSeatMap();
